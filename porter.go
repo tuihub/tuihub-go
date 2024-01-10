@@ -22,7 +22,7 @@ import (
 
 const (
 	serverNetwork = "SERVER_NETWORK"
-	serverPort    = "SERVER_PORT"
+	serverAddr    = "SERVER_ADDRESS"
 	serverTimeout = "SERVER_TIMEOUT"
 )
 
@@ -126,17 +126,16 @@ func NewPorter(ctx context.Context, config PorterConfig, handler Handler, option
 }
 
 func defaultServerConfig() *ServerConfig {
-	minute := time.Minute
 	config := ServerConfig{
-		Network: "0.0.0.0",
+		Network: "",
 		Addr:    "",
-		Timeout: &minute,
+		Timeout: nil,
 	}
 	if network, exist := os.LookupEnv(serverNetwork); exist {
 		config.Network = network
 	}
-	if port, exist := os.LookupEnv(serverPort); exist {
-		config.Addr = port
+	if addr, exist := os.LookupEnv(serverAddr); exist {
+		config.Addr = addr
 	}
 	if timeout, exist := os.LookupEnv(serverTimeout); exist {
 		d, err := time.ParseDuration(timeout)
