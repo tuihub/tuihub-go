@@ -32,7 +32,7 @@ type Porter struct {
 	logger       log.Logger
 	app          *kratos.App
 	consulConfig *capi.Config
-	serverConfig ServerConfig
+	serverConfig *ServerConfig
 }
 
 type PorterConfig struct {
@@ -40,7 +40,6 @@ type PorterConfig struct {
 	Version        string
 	GlobalName     string
 	FeatureSummary *porter.PorterFeatureSummary
-	Server         *ServerConfig
 }
 
 type ServerConfig struct {
@@ -75,12 +74,18 @@ func NewPorter(ctx context.Context, config PorterConfig, handler Handler, option
 	if handler == nil {
 		return nil, fmt.Errorf("handler is nil")
 	}
+	if config.GlobalName == "" {
+		return nil, fmt.Errorf("global name is empty")
+	}
+	if config.FeatureSummary == nil {
+		return nil, fmt.Errorf("feature summary is nil")
+	}
 	p := new(Porter)
 	p.logger = log.DefaultLogger
 	for _, o := range options {
 		o(p)
 	}
-	if p.consulConfig == nil {
+	if p.serverConfig == nil {
 		p.serverConfig = defaultServerConfig()
 	}
 	client, err := internal.NewSephirahClient(ctx, p.consulConfig)
@@ -100,7 +105,7 @@ func NewPorter(ctx context.Context, config PorterConfig, handler Handler, option
 	}
 	p.wrapper = c
 	p.server = NewServer(
-		config.Server,
+		p.serverConfig,
 		NewService(c),
 		p.logger,
 	)
@@ -120,7 +125,7 @@ func NewPorter(ctx context.Context, config PorterConfig, handler Handler, option
 	return p, nil
 }
 
-func defaultServerConfig() ServerConfig {
+func defaultServerConfig() *ServerConfig {
 	minute := time.Minute
 	config := ServerConfig{
 		Network: "0.0.0.0",
@@ -139,7 +144,7 @@ func defaultServerConfig() ServerConfig {
 			config.Timeout = &d
 		}
 	}
-	return config
+	return &config
 }
 
 func WellKnownToString(e protoreflect.Enum) string {
