@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.3](https://github.com/tuihub/tuihub-go/compare/v0.0.2...v0.0.3) (2024-01-10)
+
+
+### Features
+
+* add default server config ([fa66e62](https://github.com/tuihub/tuihub-go/commit/fa66e6236a22888db5f5a89cf119aa0be3fd4007))
+
 ## [0.0.2](https://github.com/tuihub/tuihub-go/compare/v0.0.1...v0.0.2) (2024-01-10)
 
 
