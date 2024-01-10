@@ -1,4 +1,4 @@
-package tuihub
+package logger
 
 import (
 	"fmt"
