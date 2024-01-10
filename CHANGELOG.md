@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.5](https://github.com/tuihub/tuihub-go/compare/v0.0.4...v0.0.5) (2024-01-10)
+
+
+### Bug Fixes
+
+* wrong word ([b31688c](https://github.com/tuihub/tuihub-go/commit/b31688c659d527f8568a1832cc764a1a2a8cfb61))
+
 ## [0.0.4](https://github.com/tuihub/tuihub-go/compare/v0.0.3...v0.0.4) (2024-01-10)
 
 
