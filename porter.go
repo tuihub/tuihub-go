@@ -20,12 +20,19 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
+const (
+	serverNetwork = "SERVER_NETWORK"
+	serverPort    = "SERVER_PORT"
+	serverTimeout = "SERVER_TIMEOUT"
+)
+
 type Porter struct {
 	server       *grpc.Server
 	wrapper      wrapper
 	logger       log.Logger
 	app          *kratos.App
 	consulConfig *capi.Config
+	serverConfig ServerConfig
 }
 
 type PorterConfig struct {
@@ -33,7 +40,7 @@ type PorterConfig struct {
 	Version        string
 	GlobalName     string
 	FeatureSummary *porter.PorterFeatureSummary
-	Server         ServerConfig
+	Server         *ServerConfig
 }
 
 type ServerConfig struct {
@@ -73,6 +80,9 @@ func NewPorter(ctx context.Context, config PorterConfig, handler Handler, option
 	for _, o := range options {
 		o(p)
 	}
+	if p.consulConfig == nil {
+		p.serverConfig = defaultServerConfig()
+	}
 	client, err := internal.NewSephirahClient(ctx, p.consulConfig)
 	if err != nil {
 		return nil, err
@@ -90,7 +100,7 @@ func NewPorter(ctx context.Context, config PorterConfig, handler Handler, option
 	}
 	p.wrapper = c
 	p.server = NewServer(
-		&config.Server,
+		config.Server,
 		NewService(c),
 		p.logger,
 	)
@@ -108,6 +118,28 @@ func NewPorter(ctx context.Context, config PorterConfig, handler Handler, option
 	)
 	p.app = app
 	return p, nil
+}
+
+func defaultServerConfig() ServerConfig {
+	minute := time.Minute
+	config := ServerConfig{
+		Network: "0.0.0.0",
+		Addr:    "",
+		Timeout: &minute,
+	}
+	if network, exist := os.LookupEnv(serverNetwork); exist {
+		config.Network = network
+	}
+	if port, exist := os.LookupEnv(serverPort); exist {
+		config.Addr = port
+	}
+	if timeout, exist := os.LookupEnv(serverTimeout); exist {
+		d, err := time.ParseDuration(timeout)
+		if err == nil {
+			config.Timeout = &d
+		}
+	}
+	return config
 }
 
 func WellKnownToString(e protoreflect.Enum) string {
