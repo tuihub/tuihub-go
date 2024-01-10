@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.4](https://github.com/tuihub/tuihub-go/compare/v0.0.3...v0.0.4) (2024-01-10)
+
+
+### Bug Fixes
+
+* add more nil check ([9891bca](https://github.com/tuihub/tuihub-go/commit/9891bca4e52c9784485e5a123678a846e2624790))
+
 ## [0.0.3](https://github.com/tuihub/tuihub-go/compare/v0.0.2...v0.0.3) (2024-01-10)
 
 
