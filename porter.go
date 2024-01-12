@@ -24,6 +24,8 @@ const (
 	serverNetwork = "SERVER_NETWORK"
 	serverAddr    = "SERVER_ADDRESS"
 	serverTimeout = "SERVER_TIMEOUT"
+	consulAddr    = "CONSUL_ADDRESS"
+	consulToken   = "CONSUL_TOKEN"
 )
 
 type Porter struct {
@@ -88,6 +90,9 @@ func NewPorter(ctx context.Context, config PorterConfig, handler Handler, option
 	if p.serverConfig == nil {
 		p.serverConfig = defaultServerConfig()
 	}
+	if p.consulConfig == nil {
+		p.consulConfig = defaultConsulConfig()
+	}
 	client, err := internal.NewSephirahClient(ctx, p.consulConfig)
 	if err != nil {
 		return nil, err
@@ -144,6 +149,17 @@ func defaultServerConfig() *ServerConfig {
 		}
 	}
 	return &config
+}
+
+func defaultConsulConfig() *capi.Config {
+	config := capi.DefaultConfig()
+	if addr, exist := os.LookupEnv(consulAddr); exist {
+		config.Address = addr
+	}
+	if token, exist := os.LookupEnv(consulToken); exist {
+		config.Token = token
+	}
+	return config
 }
 
 func WellKnownToString(e protoreflect.Enum) string {
