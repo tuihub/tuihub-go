@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.6](https://github.com/tuihub/tuihub-go/compare/v0.0.5...v0.0.6) (2024-01-15)
+
+
+### Bug Fixes
+
+* add env for consul configs ([7e3fb8e](https://github.com/tuihub/tuihub-go/commit/7e3fb8ee2332c57daad313cd8ae2415c4cbc1fbe))
+* bump proto version to v0.3.4 ([b0881f1](https://github.com/tuihub/tuihub-go/commit/b0881f12843b0714643364659dd7a371458351c8))
+
 ## [0.0.5](https://github.com/tuihub/tuihub-go/compare/v0.0.4...v0.0.5) (2024-01-10)
 
 
