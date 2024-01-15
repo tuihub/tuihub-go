@@ -50,7 +50,7 @@ func (s *wrapper) EnablePorter(ctx context.Context, req *pb.EnablePorterRequest)
 		}
 	}
 	ctx = metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+req.GetRefreshToken())
-	resp, err := s.Client.RefreshToken(ctx, &sephirah.RefreshTokenRequest{})
+	resp, err := s.Client.RefreshToken(ctx, new(sephirah.RefreshTokenRequest))
 	if err != nil {
 		return nil, err
 	}

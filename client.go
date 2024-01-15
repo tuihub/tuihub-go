@@ -61,6 +61,7 @@ func LoginByPassword(
 	resp, err := client.GetToken(ctx, &pb.GetTokenRequest{
 		Username: username,
 		Password: password,
+		DeviceId: nil,
 	})
 	if err != nil {
 		return nil, err
@@ -97,7 +98,7 @@ func LoginByRefreshToken(
 	c.LibrarianSephirahServiceClient = client
 	resp, err := client.RefreshToken(
 		WithToken(ctx, refreshToken),
-		&pb.RefreshTokenRequest{},
+		new(pb.RefreshTokenRequest),
 	)
 	if err != nil {
 		return nil, err
@@ -120,7 +121,7 @@ func (c *LibrarianClient) RunBackgroundRefresh() {
 		c.muToken.RLock()
 		resp, err := c.RefreshToken(
 			WithToken(context.Background(), c.refreshToken),
-			&pb.RefreshTokenRequest{},
+			new(pb.RefreshTokenRequest),
 		)
 		if err == nil {
 			return
