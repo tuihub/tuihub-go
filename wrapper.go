@@ -125,25 +125,25 @@ func (s *service) PullAccount(ctx context.Context, req *pb.PullAccountRequest) (
 	}
 	return nil, errors.BadRequest("Unsupported account platform", "")
 }
-func (s *service) PullApp(ctx context.Context, req *pb.PullAppRequest) (*pb.PullAppResponse, error) {
+func (s *service) PullAppInfo(ctx context.Context, req *pb.PullAppInfoRequest) (*pb.PullAppInfoResponse, error) {
 	if !s.p.Enabled() {
 		return nil, errors.Forbidden("Unauthorized caller", "")
 	}
-	if req.GetAppId() == nil ||
-		req.GetAppId().GetInternal() ||
-		req.GetAppId().GetSource() == "" ||
-		req.GetAppId().GetSourceAppId() == "" {
+	if req.GetAppInfoId() == nil ||
+		req.GetAppInfoId().GetInternal() ||
+		req.GetAppInfoId().GetSource() == "" ||
+		req.GetAppInfoId().GetSourceAppId() == "" {
 		return nil, errors.BadRequest("Invalid app id", "")
 	}
-	for _, source := range s.p.Config.FeatureSummary.GetSupportedAppSources() {
-		if source == req.GetAppId().GetSource() {
-			return s.p.Handler.PullApp(ctx, req)
+	for _, source := range s.p.Config.FeatureSummary.GetSupportedAppInfoSources() {
+		if source == req.GetAppInfoId().GetSource() {
+			return s.p.Handler.PullAppInfo(ctx, req)
 		}
 	}
 	return nil, errors.BadRequest("Unsupported app source", "")
 }
-func (s *service) PullAccountAppRelation(ctx context.Context, req *pb.PullAccountAppRelationRequest) (
-	*pb.PullAccountAppRelationResponse, error) {
+func (s *service) PullAccountAppInfoRelation(ctx context.Context, req *pb.PullAccountAppInfoRelationRequest) (
+	*pb.PullAccountAppInfoRelationResponse, error) {
 	if !s.p.Enabled() {
 		return nil, errors.Forbidden("Unauthorized caller", "")
 	}
@@ -156,7 +156,7 @@ func (s *service) PullAccountAppRelation(ctx context.Context, req *pb.PullAccoun
 		if account.GetPlatform() == req.GetAccountId().GetPlatform() {
 			for _, relationType := range account.GetAppRelationTypes() {
 				if relationType == req.GetRelationType() {
-					return s.p.Handler.PullAccountAppRelation(ctx, req)
+					return s.p.Handler.PullAccountAppInfoRelation(ctx, req)
 				}
 			}
 			return nil, errors.BadRequest("Unsupported relation type", "")
