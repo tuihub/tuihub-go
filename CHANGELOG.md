@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.7](https://github.com/tuihub/tuihub-go/compare/v0.0.6...v0.0.7) (2024-02-17)
+
+
+### Features
+
+* update proto to v0.4.1 ([8882d41](https://github.com/tuihub/tuihub-go/commit/8882d41ed45258b09df349d82b22417e3189cbc5))
+
 ## [0.0.6](https://github.com/tuihub/tuihub-go/compare/v0.0.5...v0.0.6) (2024-01-15)
 
 
