@@ -2,6 +2,7 @@ package tuihub
 
 import (
 	"context"
+	"os"
 	"sync"
 	"time"
 
@@ -53,7 +54,7 @@ func LoginByPassword(
 	for _, o := range options {
 		o(c)
 	}
-	client, err := internal.NewSephirahClient(ctx, c.consulConfig)
+	client, err := internal.NewSephirahClient(ctx, c.consulConfig, os.Getenv(sephirahServiceName))
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +92,7 @@ func LoginByRefreshToken(
 	for _, o := range options {
 		o(c)
 	}
-	client, err := internal.NewSephirahClient(ctx, c.consulConfig)
+	client, err := internal.NewSephirahClient(ctx, c.consulConfig, os.Getenv(sephirahServiceName))
 	if err != nil {
 		return nil, err
 	}

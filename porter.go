@@ -21,11 +21,12 @@ import (
 )
 
 const (
-	serverNetwork = "SERVER_NETWORK"
-	serverAddr    = "SERVER_ADDRESS"
-	serverTimeout = "SERVER_TIMEOUT"
-	consulAddr    = "CONSUL_ADDRESS"
-	consulToken   = "CONSUL_TOKEN"
+	serverNetwork       = "SERVER_NETWORK"
+	serverAddr          = "SERVER_ADDRESS"
+	serverTimeout       = "SERVER_TIMEOUT"
+	consulAddr          = "CONSUL_ADDRESS"
+	consulToken         = "CONSUL_TOKEN"
+	sephirahServiceName = "SEPHIRAH_SERVICE_NAME"
 )
 
 type Porter struct {
@@ -93,7 +94,7 @@ func NewPorter(ctx context.Context, config PorterConfig, handler Handler, option
 	if p.consulConfig == nil {
 		p.consulConfig = defaultConsulConfig()
 	}
-	client, err := internal.NewSephirahClient(ctx, p.consulConfig)
+	client, err := internal.NewSephirahClient(ctx, p.consulConfig, os.Getenv(sephirahServiceName))
 	if err != nil {
 		return nil, err
 	}
@@ -180,7 +181,7 @@ func (p *Porter) AsUser(ctx context.Context, userID int64) (*LibrarianClient, er
 	if p.wrapper.Token == nil {
 		return nil, fmt.Errorf("porter not enabled")
 	}
-	client, err := internal.NewSephirahClient(ctx, p.consulConfig)
+	client, err := internal.NewSephirahClient(ctx, p.consulConfig, os.Getenv(sephirahServiceName))
 	if err != nil {
 		return nil, err
 	}

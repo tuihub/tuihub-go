@@ -12,14 +12,21 @@ import (
 	capi "github.com/hashicorp/consul/api"
 )
 
-func NewSephirahClient(ctx context.Context, config *capi.Config) (sephirah.LibrarianSephirahServiceClient, error) {
+func NewSephirahClient(
+	ctx context.Context,
+	config *capi.Config,
+	serviceName string,
+) (sephirah.LibrarianSephirahServiceClient, error) {
 	r, err := NewRegistry(config)
 	if err != nil {
 		return nil, err
 	}
+	if serviceName == "" {
+		serviceName = "librarian"
+	}
 	conn, err := grpc.DialInsecure(
 		context.Background(),
-		grpc.WithEndpoint("discovery:///sephirah"),
+		grpc.WithEndpoint("discovery:///"+serviceName),
 		grpc.WithDiscovery(r),
 		grpc.WithMiddleware(
 			recovery.Recovery(),
