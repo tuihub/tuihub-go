@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.8](https://github.com/tuihub/tuihub-go/compare/v0.0.7...v0.0.8) (2024-02-21)
+
+
+### Features
+
+* support custom sephirah service name ([e5c7ea0](https://github.com/tuihub/tuihub-go/commit/e5c7ea0b3d946228ced9e7752c9f68f6a76b7812))
+
 ## [0.0.7](https://github.com/tuihub/tuihub-go/compare/v0.0.6...v0.0.7) (2024-02-17)
 
 
