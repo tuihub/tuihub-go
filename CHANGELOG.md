@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.9](https://github.com/tuihub/tuihub-go/compare/v0.0.8...v0.0.9) (2024-03-06)
+
+
+### Features
+
+* add SearchAppInfo ([b503266](https://github.com/tuihub/tuihub-go/commit/b5032667c48da94d14336c26301a1ad0a8db4d53))
+
 ## [0.0.8](https://github.com/tuihub/tuihub-go/compare/v0.0.7...v0.0.8) (2024-02-21)
 
 
