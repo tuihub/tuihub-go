@@ -2,6 +2,7 @@ package tuihub
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"sync"
@@ -75,13 +76,13 @@ func (p *Porter) Stop() error {
 
 func NewPorter(ctx context.Context, config PorterConfig, handler Handler, options ...PorterOption) (*Porter, error) {
 	if handler == nil {
-		return nil, fmt.Errorf("handler is nil")
+		return nil, errors.New("handler is nil")
 	}
 	if config.GlobalName == "" {
-		return nil, fmt.Errorf("global name is empty")
+		return nil, errors.New("global name is empty")
 	}
 	if config.FeatureSummary == nil {
-		return nil, fmt.Errorf("feature summary is nil")
+		return nil, errors.New("feature summary is nil")
 	}
 	p := new(Porter)
 	p.logger = log.DefaultLogger
@@ -179,7 +180,7 @@ func WellKnownToString(e protoreflect.Enum) string {
 
 func (p *Porter) AsUser(ctx context.Context, userID int64) (*LibrarianClient, error) {
 	if p.wrapper.Token == nil {
-		return nil, fmt.Errorf("porter not enabled")
+		return nil, errors.New("porter not enabled")
 	}
 	client, err := internal.NewSephirahClient(ctx, p.consulConfig, os.Getenv(sephirahServiceName))
 	if err != nil {

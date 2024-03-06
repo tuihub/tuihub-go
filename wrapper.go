@@ -164,6 +164,18 @@ func (s *service) PullAccountAppInfoRelation(ctx context.Context, req *pb.PullAc
 	}
 	return nil, errors.BadRequest("Unsupported account", "")
 }
+func (s *service) SearchAppInfo(ctx context.Context, req *pb.SearchAppInfoRequest) (*pb.SearchAppInfoResponse, error) {
+	if !s.p.Enabled() {
+		return nil, errors.Forbidden("Unauthorized caller", "")
+	}
+	if req.GetName() == "" {
+		return nil, errors.BadRequest("Invalid app name", "")
+	}
+	if len(s.p.Config.FeatureSummary.GetSupportedAppInfoSources()) > 0 {
+		return s.p.Handler.SearchAppInfo(ctx, req)
+	}
+	return nil, errors.BadRequest("Unsupported app source", "")
+}
 func (s *service) PullFeed(ctx context.Context, req *pb.PullFeedRequest) (*pb.PullFeedResponse, error) {
 	if !s.p.Enabled() {
 		return nil, errors.Forbidden("Unauthorized caller", "")
