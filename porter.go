@@ -31,12 +31,13 @@ const (
 )
 
 type Porter struct {
-	server       *grpc.Server
-	wrapper      wrapper
-	logger       log.Logger
-	app          *kratos.App
-	consulConfig *capi.Config
-	serverConfig *ServerConfig
+	server        *grpc.Server
+	requireAsUser bool
+	wrapper       wrapper
+	logger        log.Logger
+	app           *kratos.App
+	consulConfig  *capi.Config
+	serverConfig  *ServerConfig
 }
 
 type PorterConfig struct {
@@ -63,6 +64,12 @@ func WithLogger(logger log.Logger) PorterOption {
 func WithPorterConsulConfig(config *capi.Config) PorterOption {
 	return func(p *Porter) {
 		p.consulConfig = config
+	}
+}
+
+func WithAsUser() PorterOption {
+	return func(p *Porter) {
+		p.requireAsUser = true
 	}
 }
 
@@ -104,11 +111,12 @@ func NewPorter(ctx context.Context, config PorterConfig, handler Handler, option
 		return nil, err
 	}
 	c := wrapper{
-		Handler: handler,
-		Config:  config,
-		Logger:  p.logger,
-		Token:   nil,
-		Client:  client,
+		Handler:      handler,
+		Config:       config,
+		Logger:       p.logger,
+		requireToken: p.requireAsUser,
+		Token:        nil,
+		Client:       client,
 	}
 	p.wrapper = c
 	p.server = NewServer(
@@ -179,6 +187,9 @@ func WellKnownToString(e protoreflect.Enum) string {
 }
 
 func (p *Porter) AsUser(ctx context.Context, userID int64) (*LibrarianClient, error) {
+	if !p.requireAsUser {
+		return nil, errors.New("init porter with `WithAsUser` option to use this method")
+	}
 	if p.wrapper.Token == nil {
 		return nil, errors.New("porter not enabled")
 	}

@@ -18,11 +18,12 @@ import (
 )
 
 type wrapper struct {
-	Handler Handler
-	Config  PorterConfig
-	Logger  log.Logger
-	Token   *tokenInfo
-	Client  sephirah.LibrarianSephirahServiceClient
+	Handler      Handler
+	Config       PorterConfig
+	Logger       log.Logger
+	requireToken bool
+	Token        *tokenInfo
+	Client       sephirah.LibrarianSephirahServiceClient
 }
 
 type tokenInfo struct {
@@ -49,15 +50,20 @@ func (s *wrapper) EnablePorter(ctx context.Context, req *pb.EnablePorterRequest)
 			return nil, fmt.Errorf("porter already enabled by %d", s.Token.enabler)
 		}
 	}
-	ctx = metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+req.GetRefreshToken())
-	resp, err := s.Client.RefreshToken(ctx, new(sephirah.RefreshTokenRequest))
-	if err != nil {
-		return nil, err
-	}
-	s.Token = &tokenInfo{
-		enabler:      req.GetSephirahId(),
-		AccessToken:  resp.GetAccessToken(),
-		refreshToken: resp.GetRefreshToken(),
+	if s.requireToken {
+		ctx = metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+req.GetRefreshToken())
+		resp, err := s.Client.RefreshToken(ctx, new(sephirah.RefreshTokenRequest))
+		if err != nil {
+			return nil, err
+		}
+		s.Token = &tokenInfo{
+			enabler:      req.GetSephirahId(),
+			AccessToken:  resp.GetAccessToken(),
+			refreshToken: resp.GetRefreshToken(),
+		}
+	} else {
+		s.Token = new(tokenInfo)
+		s.Token.enabler = req.GetSephirahId()
 	}
 	return &pb.EnablePorterResponse{}, nil
 }
