@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.10](https://github.com/tuihub/tuihub-go/compare/v0.0.9...v0.0.10) (2024-07-01)
+
+
+### Features
+
+* support enable without token ([35f049f](https://github.com/tuihub/tuihub-go/commit/35f049f51241972247ad598e5b320bc88438c3e8))
+* upgrade deps ([8b67633](https://github.com/tuihub/tuihub-go/commit/8b67633f9d291ef31b28665fcdbbd0c57359548b))
+
 ## [0.0.9](https://github.com/tuihub/tuihub-go/compare/v0.0.8...v0.0.9) (2024-03-06)
 
 
