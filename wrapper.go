@@ -118,8 +118,8 @@ func (s *service) PullAccount(ctx context.Context, req *pb.PullAccountRequest) (
 		req.GetAccountId().GetPlatformAccountId() == "" {
 		return nil, errors.BadRequest("Invalid account id", "")
 	}
-	for _, account := range s.p.Config.FeatureSummary.GetSupportedAccounts() {
-		if account.GetPlatform() == req.GetAccountId().GetPlatform() {
+	for _, account := range s.p.Config.FeatureSummary.GetAccountPlatforms() {
+		if account.GetId() == req.GetAccountId().GetPlatform() {
 			return s.p.Handler.PullAccount(ctx, req)
 		}
 	}
@@ -135,8 +135,8 @@ func (s *service) PullAppInfo(ctx context.Context, req *pb.PullAppInfoRequest) (
 		req.GetAppInfoId().GetSourceAppId() == "" {
 		return nil, errors.BadRequest("Invalid app id", "")
 	}
-	for _, source := range s.p.Config.FeatureSummary.GetSupportedAppInfoSources() {
-		if source == req.GetAppInfoId().GetSource() {
+	for _, source := range s.p.Config.FeatureSummary.GetAppInfoSources() {
+		if source.GetId() == req.GetAppInfoId().GetSource() {
 			return s.p.Handler.PullAppInfo(ctx, req)
 		}
 	}
@@ -152,14 +152,9 @@ func (s *service) PullAccountAppInfoRelation(ctx context.Context, req *pb.PullAc
 		req.GetAccountId().GetPlatform() == "" || req.GetAccountId().GetPlatformAccountId() == "" {
 		return nil, errors.BadRequest("Invalid account id", "")
 	}
-	for _, account := range s.p.Config.FeatureSummary.GetSupportedAccounts() {
-		if account.GetPlatform() == req.GetAccountId().GetPlatform() {
-			for _, relationType := range account.GetAppRelationTypes() {
-				if relationType == req.GetRelationType() {
-					return s.p.Handler.PullAccountAppInfoRelation(ctx, req)
-				}
-			}
-			return nil, errors.BadRequest("Unsupported relation type", "")
+	for _, account := range s.p.Config.FeatureSummary.GetAccountPlatforms() {
+		if account.GetId() == req.GetAccountId().GetPlatform() {
+			return s.p.Handler.PullAccountAppInfoRelation(ctx, req)
 		}
 	}
 	return nil, errors.BadRequest("Unsupported account", "")
@@ -171,7 +166,7 @@ func (s *service) SearchAppInfo(ctx context.Context, req *pb.SearchAppInfoReques
 	if req.GetName() == "" {
 		return nil, errors.BadRequest("Invalid app name", "")
 	}
-	if len(s.p.Config.FeatureSummary.GetSupportedAppInfoSources()) > 0 {
+	if len(s.p.Config.FeatureSummary.GetAppInfoSources()) > 0 {
 		return s.p.Handler.SearchAppInfo(ctx, req)
 	}
 	return nil, errors.BadRequest("Unsupported app source", "")
@@ -184,8 +179,8 @@ func (s *service) PullFeed(ctx context.Context, req *pb.PullFeedRequest) (*pb.Pu
 		req.GetChannelId() == "" {
 		return nil, errors.BadRequest("Invalid feed id", "")
 	}
-	for _, source := range s.p.Config.FeatureSummary.GetSupportedFeedSources() {
-		if source == req.GetSource() {
+	for _, source := range s.p.Config.FeatureSummary.GetFeedSources() {
+		if source.GetId() == req.GetSource() {
 			return s.p.Handler.PullFeed(ctx, req)
 		}
 	}
@@ -199,8 +194,8 @@ func (s *service) PushFeedItems(ctx context.Context, req *pb.PushFeedItemsReques
 	if req.GetDestination() == "" || req.GetChannelId() == "" || len(req.GetItems()) == 0 {
 		return nil, errors.BadRequest("Invalid feed id", "")
 	}
-	for _, destination := range s.p.Config.FeatureSummary.GetSupportedNotifyDestinations() {
-		if destination == req.GetDestination() {
+	for _, destination := range s.p.Config.FeatureSummary.GetNotifyDestinations() {
+		if destination.GetId() == req.GetDestination() {
 			return s.p.Handler.PushFeedItems(ctx, req)
 		}
 	}
