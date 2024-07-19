@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.12](https://github.com/tuihub/tuihub-go/compare/v0.0.11...v0.0.12) (2024-07-19)
+
+
+### Features
+
+* add json schema util ([c6153f5](https://github.com/tuihub/tuihub-go/commit/c6153f59847fd286b86ccb44f26791ba5d3eb4ef))
+
 ## [0.0.11](https://github.com/tuihub/tuihub-go/compare/v0.0.10...v0.0.11) (2024-07-19)
 
 
