@@ -35,10 +35,11 @@ type tokenInfo struct {
 func (s *wrapper) GetPorterInformation(ctx context.Context, req *pb.GetPorterInformationRequest) (
 	*pb.GetPorterInformationResponse, error) {
 	return &pb.GetPorterInformationResponse{
-		Name:           s.Config.Name,
-		Version:        s.Config.Version,
-		GlobalName:     s.Config.GlobalName,
-		FeatureSummary: s.Config.FeatureSummary,
+		Name:              s.Config.Name,
+		Version:           s.Config.Version,
+		GlobalName:        s.Config.GlobalName,
+		FeatureSummary:    s.Config.FeatureSummary,
+		ContextJsonSchema: nil,
 	}, nil
 }
 func (s *wrapper) EnablePorter(ctx context.Context, req *pb.EnablePorterRequest) (

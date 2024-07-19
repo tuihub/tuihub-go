@@ -120,7 +120,7 @@ func WithToken(ctx context.Context, token string) context.Context {
 func (c *LibrarianClient) RunBackgroundRefresh() {
 	for {
 		c.muToken.RLock()
-		resp, err := c.RefreshToken( // nolint:typecheck // false positive
+		resp, err := c.RefreshToken(
 			WithToken(context.Background(), c.refreshToken),
 			new(pb.RefreshTokenRequest),
 		)
