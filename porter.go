@@ -197,9 +197,9 @@ func (p *Porter) AsUser(ctx context.Context, userID int64) (*LibrarianClient, er
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.GainUserPrivilege(
+	resp, err := client.AcquireUserToken(
 		WithToken(ctx, p.wrapper.Token.AccessToken),
-		&sephirah.GainUserPrivilegeRequest{
+		&sephirah.AcquireUserTokenRequest{
 			UserId: &librarian.InternalID{Id: userID},
 		},
 	)

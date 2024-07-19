@@ -181,12 +181,8 @@ func (s *service) PullFeed(ctx context.Context, req *pb.PullFeedRequest) (*pb.Pu
 	if !s.p.Enabled() {
 		return nil, errors.Forbidden("Unauthorized caller", "")
 	}
-	if req.GetSource() == "" ||
-		req.GetChannelId() == "" {
-		return nil, errors.BadRequest("Invalid feed id", "")
-	}
 	for _, source := range s.p.Config.FeatureSummary.GetFeedSources() {
-		if source.GetId() == req.GetSource() {
+		if source.GetId() == req.GetSource().GetId() {
 			return s.p.Handler.PullFeed(ctx, req)
 		}
 	}
@@ -197,11 +193,8 @@ func (s *service) PushFeedItems(ctx context.Context, req *pb.PushFeedItemsReques
 	if !s.p.Enabled() {
 		return nil, errors.Forbidden("Unauthorized caller", "")
 	}
-	if req.GetDestination() == "" || req.GetChannelId() == "" || len(req.GetItems()) == 0 {
-		return nil, errors.BadRequest("Invalid feed id", "")
-	}
 	for _, destination := range s.p.Config.FeatureSummary.GetNotifyDestinations() {
-		if destination.GetId() == req.GetDestination() {
+		if destination.GetId() == req.GetDestination().GetId() {
 			return s.p.Handler.PushFeedItems(ctx, req)
 		}
 	}
