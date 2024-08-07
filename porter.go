@@ -112,12 +112,13 @@ func NewPorter(
 		return nil, err
 	}
 	c := serviceWrapper{
-		Handler:      handler,
-		Info:         info,
-		Logger:       p.logger,
-		Client:       client,
-		RequireToken: p.requireAsUser,
-		Token:        nil,
+		Handler:       handler,
+		Info:          info,
+		Logger:        p.logger,
+		Client:        client,
+		RequireToken:  p.requireAsUser,
+		Token:         nil,
+		lastHeartbeat: time.Time{},
 	}
 	p.wrapper = c
 	p.server = NewServer(

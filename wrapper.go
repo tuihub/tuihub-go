@@ -17,6 +17,12 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
+const (
+	defaultHeartbeatInterval  = time.Second * 10
+	defaultHeartbeatDowngrade = time.Second * 30
+	defaultHeartbeatTimeout   = time.Second * 60
+)
+
 type serviceWrapper struct {
 	Handler      Handler
 	Info         *pb.GetPorterInformationResponse
@@ -24,6 +30,8 @@ type serviceWrapper struct {
 	Client       sephirah.LibrarianSephirahServiceClient
 	RequireToken bool
 	Token        *tokenInfo
+
+	lastHeartbeat time.Time
 }
 
 type tokenInfo struct {
@@ -45,10 +53,11 @@ func (s *serviceWrapper) EnablePorter(ctx context.Context, req *pb.EnablePorterR
 				NeedRefreshToken: false,
 				EnablesSummary:   nil,
 			}, nil
-		} else {
+		} else if s.lastHeartbeat.Add(defaultHeartbeatTimeout).After(time.Now()) {
 			return nil, fmt.Errorf("porter already enabled by %d", s.Token.enabler)
 		}
 	}
+	s.lastHeartbeat = time.Now()
 	if s.RequireToken {
 		ctx = metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+req.GetRefreshToken())
 		resp, err := s.Client.RefreshToken(ctx, new(sephirah.RefreshTokenRequest))
