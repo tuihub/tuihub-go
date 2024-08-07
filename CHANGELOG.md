@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.0.13](https://github.com/tuihub/tuihub-go/compare/v0.0.12...v0.0.13) (2024-08-07)
+
+
+### Features
+
+* impl heartbeat ([f7d2be0](https://github.com/tuihub/tuihub-go/commit/f7d2be0c8366b8809b3c57cf39a4e9763dfc5065))
+* unpin go version ([cf7a0b3](https://github.com/tuihub/tuihub-go/commit/cf7a0b3f9d231491a754d3284d1ac86c0ddbf8a4))
+* update proto to v0.4.20 ([b5d285a](https://github.com/tuihub/tuihub-go/commit/b5d285a75ff4e4a4cc1d7efb1c1d9458b7b9c837))
+
 ## [0.0.12](https://github.com/tuihub/tuihub-go/compare/v0.0.11...v0.0.12) (2024-07-19)
 
 
