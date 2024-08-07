@@ -33,18 +33,11 @@ const (
 type Porter struct {
 	server        *grpc.Server
 	requireAsUser bool
-	wrapper       wrapper
+	wrapper       serviceWrapper
 	logger        log.Logger
 	app           *kratos.App
 	consulConfig  *capi.Config
 	serverConfig  *ServerConfig
-}
-
-type PorterConfig struct {
-	Name           string
-	Version        string
-	GlobalName     string
-	FeatureSummary *porter.PorterFeatureSummary
 }
 
 type ServerConfig struct {
@@ -81,14 +74,22 @@ func (p *Porter) Stop() error {
 	return p.app.Stop()
 }
 
-func NewPorter(ctx context.Context, config PorterConfig, handler Handler, options ...PorterOption) (*Porter, error) {
+func NewPorter(
+	ctx context.Context,
+	info *porter.GetPorterInformationResponse,
+	handler Handler,
+	options ...PorterOption,
+) (*Porter, error) {
 	if handler == nil {
 		return nil, errors.New("handler is nil")
 	}
-	if config.GlobalName == "" {
+	if info.GetBinarySummary() == nil {
+		return nil, errors.New("binary summary is nil")
+	}
+	if info.GetGlobalName() == "" {
 		return nil, errors.New("global name is empty")
 	}
-	if config.FeatureSummary == nil {
+	if info.GetFeatureSummary() == nil {
 		return nil, errors.New("feature summary is nil")
 	}
 	p := new(Porter)
@@ -110,13 +111,13 @@ func NewPorter(ctx context.Context, config PorterConfig, handler Handler, option
 	if err != nil {
 		return nil, err
 	}
-	c := wrapper{
+	c := serviceWrapper{
 		Handler:      handler,
-		Config:       config,
+		Info:         info,
 		Logger:       p.logger,
-		requireToken: p.requireAsUser,
-		Token:        nil,
 		Client:       client,
+		RequireToken: p.requireAsUser,
+		Token:        nil,
 	}
 	p.wrapper = c
 	p.server = NewServer(
@@ -129,9 +130,9 @@ func NewPorter(ctx context.Context, config PorterConfig, handler Handler, option
 	app := kratos.New(
 		kratos.ID(id+name),
 		kratos.Name(name),
-		kratos.Version(p.wrapper.Config.Version),
+		kratos.Version(p.wrapper.Info.GetBinarySummary().GetBuildVersion()),
 		kratos.Metadata(map[string]string{
-			"PorterName": p.wrapper.Config.GlobalName,
+			"PorterName": p.wrapper.Info.GetGlobalName(),
 		}),
 		kratos.Server(p.server),
 		kratos.Registrar(r),

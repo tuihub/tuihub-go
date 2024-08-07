@@ -17,13 +17,13 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-type wrapper struct {
+type serviceWrapper struct {
 	Handler      Handler
-	Config       PorterConfig
+	Info         *pb.GetPorterInformationResponse
 	Logger       log.Logger
-	requireToken bool
-	Token        *tokenInfo
 	Client       sephirah.LibrarianSephirahServiceClient
+	RequireToken bool
+	Token        *tokenInfo
 }
 
 type tokenInfo struct {
@@ -32,43 +32,48 @@ type tokenInfo struct {
 	refreshToken string
 }
 
-func (s *wrapper) GetPorterInformation(ctx context.Context, req *pb.GetPorterInformationRequest) (
+func (s *serviceWrapper) GetPorterInformation(ctx context.Context, req *pb.GetPorterInformationRequest) (
 	*pb.GetPorterInformationResponse, error) {
-	return &pb.GetPorterInformationResponse{
-		Name:              s.Config.Name,
-		Version:           s.Config.Version,
-		GlobalName:        s.Config.GlobalName,
-		FeatureSummary:    s.Config.FeatureSummary,
-		ContextJsonSchema: nil,
-	}, nil
+	return s.Info, nil
 }
-func (s *wrapper) EnablePorter(ctx context.Context, req *pb.EnablePorterRequest) (
+func (s *serviceWrapper) EnablePorter(ctx context.Context, req *pb.EnablePorterRequest) (
 	*pb.EnablePorterResponse, error) {
 	if s.Token != nil {
 		if s.Token.enabler == req.GetSephirahId() {
-			return &pb.EnablePorterResponse{}, nil
+			return &pb.EnablePorterResponse{
+				StatusMessage:    "",
+				NeedRefreshToken: false,
+				EnablesSummary:   nil,
+			}, nil
 		} else {
 			return nil, fmt.Errorf("porter already enabled by %d", s.Token.enabler)
 		}
 	}
-	if s.requireToken {
+	if s.RequireToken {
 		ctx = metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+req.GetRefreshToken())
 		resp, err := s.Client.RefreshToken(ctx, new(sephirah.RefreshTokenRequest))
-		if err != nil {
-			return nil, err
+		if err == nil {
+			s.Token = &tokenInfo{
+				enabler:      req.GetSephirahId(),
+				AccessToken:  resp.GetAccessToken(),
+				refreshToken: resp.GetRefreshToken(),
+			}
+			return &pb.EnablePorterResponse{
+				StatusMessage:    "",
+				NeedRefreshToken: false,
+				EnablesSummary:   nil,
+			}, nil
 		}
-		s.Token = &tokenInfo{
-			enabler:      req.GetSephirahId(),
-			AccessToken:  resp.GetAccessToken(),
-			refreshToken: resp.GetRefreshToken(),
-		}
-	} else {
-		s.Token = new(tokenInfo)
-		s.Token.enabler = req.GetSephirahId()
 	}
-	return &pb.EnablePorterResponse{}, nil
+	s.Token = new(tokenInfo)
+	s.Token.enabler = req.GetSephirahId()
+	return &pb.EnablePorterResponse{
+		StatusMessage:    "",
+		NeedRefreshToken: true,
+		EnablesSummary:   nil,
+	}, nil
 }
-func (s *wrapper) Enabled() bool {
+func (s *serviceWrapper) Enabled() bool {
 	return s.Token != nil
 }
 
@@ -97,10 +102,10 @@ func NewServer(c *ServerConfig, service pb.LibrarianPorterServiceServer, logger 
 
 type service struct {
 	pb.UnimplementedLibrarianPorterServiceServer
-	p wrapper
+	p serviceWrapper
 }
 
-func NewService(p wrapper) pb.LibrarianPorterServiceServer {
+func NewService(p serviceWrapper) pb.LibrarianPorterServiceServer {
 	return &service{
 		UnimplementedLibrarianPorterServiceServer: pb.UnimplementedLibrarianPorterServiceServer{},
 		p: p,
@@ -125,7 +130,7 @@ func (s *service) PullAccount(ctx context.Context, req *pb.PullAccountRequest) (
 		req.GetAccountId().GetPlatformAccountId() == "" {
 		return nil, errors.BadRequest("Invalid account id", "")
 	}
-	for _, account := range s.p.Config.FeatureSummary.GetAccountPlatforms() {
+	for _, account := range s.p.Info.GetFeatureSummary().GetAccountPlatforms() {
 		if account.GetId() == req.GetAccountId().GetPlatform() {
 			return s.p.Handler.PullAccount(ctx, req)
 		}
@@ -142,7 +147,7 @@ func (s *service) PullAppInfo(ctx context.Context, req *pb.PullAppInfoRequest) (
 		req.GetAppInfoId().GetSourceAppId() == "" {
 		return nil, errors.BadRequest("Invalid app id", "")
 	}
-	for _, source := range s.p.Config.FeatureSummary.GetAppInfoSources() {
+	for _, source := range s.p.Info.GetFeatureSummary().GetAppInfoSources() {
 		if source.GetId() == req.GetAppInfoId().GetSource() {
 			return s.p.Handler.PullAppInfo(ctx, req)
 		}
@@ -159,7 +164,7 @@ func (s *service) PullAccountAppInfoRelation(ctx context.Context, req *pb.PullAc
 		req.GetAccountId().GetPlatform() == "" || req.GetAccountId().GetPlatformAccountId() == "" {
 		return nil, errors.BadRequest("Invalid account id", "")
 	}
-	for _, account := range s.p.Config.FeatureSummary.GetAccountPlatforms() {
+	for _, account := range s.p.Info.GetFeatureSummary().GetAccountPlatforms() {
 		if account.GetId() == req.GetAccountId().GetPlatform() {
 			return s.p.Handler.PullAccountAppInfoRelation(ctx, req)
 		}
@@ -173,7 +178,7 @@ func (s *service) SearchAppInfo(ctx context.Context, req *pb.SearchAppInfoReques
 	if req.GetName() == "" {
 		return nil, errors.BadRequest("Invalid app name", "")
 	}
-	if len(s.p.Config.FeatureSummary.GetAppInfoSources()) > 0 {
+	if len(s.p.Info.GetFeatureSummary().GetAppInfoSources()) > 0 {
 		return s.p.Handler.SearchAppInfo(ctx, req)
 	}
 	return nil, errors.BadRequest("Unsupported app source", "")
@@ -182,7 +187,7 @@ func (s *service) PullFeed(ctx context.Context, req *pb.PullFeedRequest) (*pb.Pu
 	if !s.p.Enabled() {
 		return nil, errors.Forbidden("Unauthorized caller", "")
 	}
-	for _, source := range s.p.Config.FeatureSummary.GetFeedSources() {
+	for _, source := range s.p.Info.GetFeatureSummary().GetFeedSources() {
 		if source.GetId() == req.GetSource().GetId() {
 			return s.p.Handler.PullFeed(ctx, req)
 		}
@@ -194,7 +199,7 @@ func (s *service) PushFeedItems(ctx context.Context, req *pb.PushFeedItemsReques
 	if !s.p.Enabled() {
 		return nil, errors.Forbidden("Unauthorized caller", "")
 	}
-	for _, destination := range s.p.Config.FeatureSummary.GetNotifyDestinations() {
+	for _, destination := range s.p.Info.GetFeatureSummary().GetNotifyDestinations() {
 		if destination.GetId() == req.GetDestination().GetId() {
 			return s.p.Handler.PushFeedItems(ctx, req)
 		}

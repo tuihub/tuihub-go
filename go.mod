@@ -1,19 +1,21 @@
 module github.com/tuihub/tuihub-go
 
-go 1.20
+go 1.21
+
+toolchain go1.21.12
 
 require (
 	github.com/go-kratos/kratos/contrib/registry/consul/v2 v2.0.0-20240627104009-3198e0b83bf2
-	github.com/go-kratos/kratos/v2 v2.7.3
+	github.com/go-kratos/kratos/v2 v2.8.0
 	github.com/hashicorp/consul/api v1.29.1
 	github.com/invopop/jsonschema v0.12.0
-	github.com/tuihub/protos v0.4.16
-	google.golang.org/grpc v1.64.1
+	github.com/tuihub/protos v0.4.20
+	google.golang.org/grpc v1.65.0
 	google.golang.org/protobuf v1.34.2
 )
 
 require (
-	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.34.2-20240508200655-46a4cf4ba109.2 // indirect
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.34.2-20240717164558-a6c49f84cc0f.2 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/buger/jsonparser v1.1.1 // indirect
