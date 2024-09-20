@@ -24,7 +24,7 @@ const (
 )
 
 type serviceWrapper struct {
-	Handler      Handler
+	pb.LibrarianPorterServiceServer
 	Info         *pb.GetPorterInformationResponse
 	Logger       log.Logger
 	Client       sephirah.LibrarianSephirahServiceClient
@@ -46,41 +46,45 @@ func (s *serviceWrapper) GetPorterInformation(ctx context.Context, req *pb.GetPo
 }
 func (s *serviceWrapper) EnablePorter(ctx context.Context, req *pb.EnablePorterRequest) (
 	*pb.EnablePorterResponse, error) {
-	if s.Token != nil {
-		if s.Token.enabler == req.GetSephirahId() {
-			return &pb.EnablePorterResponse{
-				StatusMessage:    "",
-				NeedRefreshToken: false,
-				EnablesSummary:   nil,
-			}, nil
-		} else if s.lastHeartbeat.Add(defaultHeartbeatTimeout).After(time.Now()) {
-			return nil, fmt.Errorf("porter already enabled by %d", s.Token.enabler)
+	needRefreshToken := false
+	f := func() error {
+		if s.Token != nil {
+			if s.Token.enabler == req.GetSephirahId() {
+				return nil
+			} else if s.lastHeartbeat.Add(defaultHeartbeatTimeout).After(time.Now()) {
+				return fmt.Errorf("porter already enabled by %d", s.Token.enabler)
+			}
 		}
-	}
-	s.lastHeartbeat = time.Now()
-	if s.RequireToken {
-		ctx = metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+req.GetRefreshToken())
-		resp, err := s.Client.RefreshToken(ctx, new(sephirah.RefreshTokenRequest))
-		if err == nil {
+		s.Token = new(tokenInfo)
+		s.Token.enabler = req.GetSephirahId()
+		s.lastHeartbeat = time.Now()
+		if s.RequireToken {
+			if req.GetRefreshToken() == "" {
+				needRefreshToken = true
+				return nil
+			}
+			ctx = metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+req.GetRefreshToken())
+			resp, err := s.Client.RefreshToken(ctx, new(sephirah.RefreshTokenRequest))
+			if err != nil {
+				return err
+			}
 			s.Token = &tokenInfo{
 				enabler:      req.GetSephirahId(),
 				AccessToken:  resp.GetAccessToken(),
 				refreshToken: resp.GetRefreshToken(),
 			}
-			return &pb.EnablePorterResponse{
-				StatusMessage:    "",
-				NeedRefreshToken: false,
-				EnablesSummary:   nil,
-			}, nil
 		}
+		return nil
 	}
-	s.Token = new(tokenInfo)
-	s.Token.enabler = req.GetSephirahId()
-	return &pb.EnablePorterResponse{
-		StatusMessage:    "",
-		NeedRefreshToken: true,
-		EnablesSummary:   nil,
-	}, nil
+	if err := f(); err != nil {
+		return nil, err
+	}
+	if resp, err := s.LibrarianPorterServiceServer.EnablePorter(ctx, req); isUnimplementedError(err) {
+		return new(pb.EnablePorterResponse), nil
+	} else {
+		resp.NeedRefreshToken = needRefreshToken
+		return resp, err
+	}
 }
 func (s *serviceWrapper) Enabled() bool {
 	return s.Token != nil
@@ -110,28 +114,26 @@ func NewServer(c *ServerConfig, service pb.LibrarianPorterServiceServer, logger 
 }
 
 type service struct {
-	pb.UnimplementedLibrarianPorterServiceServer
-	p serviceWrapper
+	serviceWrapper
 }
 
 func NewService(p serviceWrapper) pb.LibrarianPorterServiceServer {
 	return &service{
-		UnimplementedLibrarianPorterServiceServer: pb.UnimplementedLibrarianPorterServiceServer{},
-		p: p,
+		p,
 	}
 }
 
 func (s *service) GetPorterInformation(ctx context.Context, req *pb.GetPorterInformationRequest) (
 	*pb.GetPorterInformationResponse, error) {
-	return s.p.GetPorterInformation(ctx, req)
+	return s.serviceWrapper.GetPorterInformation(ctx, req)
 }
 func (s *service) EnablePorter(ctx context.Context, req *pb.EnablePorterRequest) (
 	*pb.EnablePorterResponse, error) {
-	return s.p.EnablePorter(ctx, req)
+	return s.serviceWrapper.EnablePorter(ctx, req)
 }
 func (s *service) PullAccount(ctx context.Context, req *pb.PullAccountRequest) (
 	*pb.PullAccountResponse, error) {
-	if !s.p.Enabled() {
+	if !s.serviceWrapper.Enabled() {
 		return nil, errors.Forbidden("Unauthorized caller", "")
 	}
 	if req.GetAccountId() == nil ||
@@ -139,15 +141,15 @@ func (s *service) PullAccount(ctx context.Context, req *pb.PullAccountRequest) (
 		req.GetAccountId().GetPlatformAccountId() == "" {
 		return nil, errors.BadRequest("Invalid account id", "")
 	}
-	for _, account := range s.p.Info.GetFeatureSummary().GetAccountPlatforms() {
+	for _, account := range s.serviceWrapper.Info.GetFeatureSummary().GetAccountPlatforms() {
 		if account.GetId() == req.GetAccountId().GetPlatform() {
-			return s.p.Handler.PullAccount(ctx, req)
+			return s.serviceWrapper.LibrarianPorterServiceServer.PullAccount(ctx, req)
 		}
 	}
 	return nil, errors.BadRequest("Unsupported account platform", "")
 }
 func (s *service) PullAppInfo(ctx context.Context, req *pb.PullAppInfoRequest) (*pb.PullAppInfoResponse, error) {
-	if !s.p.Enabled() {
+	if !s.serviceWrapper.Enabled() {
 		return nil, errors.Forbidden("Unauthorized caller", "")
 	}
 	if req.GetAppInfoId() == nil ||
@@ -156,16 +158,16 @@ func (s *service) PullAppInfo(ctx context.Context, req *pb.PullAppInfoRequest) (
 		req.GetAppInfoId().GetSourceAppId() == "" {
 		return nil, errors.BadRequest("Invalid app id", "")
 	}
-	for _, source := range s.p.Info.GetFeatureSummary().GetAppInfoSources() {
+	for _, source := range s.serviceWrapper.Info.GetFeatureSummary().GetAppInfoSources() {
 		if source.GetId() == req.GetAppInfoId().GetSource() {
-			return s.p.Handler.PullAppInfo(ctx, req)
+			return s.serviceWrapper.LibrarianPorterServiceServer.PullAppInfo(ctx, req)
 		}
 	}
 	return nil, errors.BadRequest("Unsupported app source", "")
 }
 func (s *service) PullAccountAppInfoRelation(ctx context.Context, req *pb.PullAccountAppInfoRelationRequest) (
 	*pb.PullAccountAppInfoRelationResponse, error) {
-	if !s.p.Enabled() {
+	if !s.serviceWrapper.Enabled() {
 		return nil, errors.Forbidden("Unauthorized caller", "")
 	}
 	if req.GetAccountId() == nil ||
@@ -173,44 +175,44 @@ func (s *service) PullAccountAppInfoRelation(ctx context.Context, req *pb.PullAc
 		req.GetAccountId().GetPlatform() == "" || req.GetAccountId().GetPlatformAccountId() == "" {
 		return nil, errors.BadRequest("Invalid account id", "")
 	}
-	for _, account := range s.p.Info.GetFeatureSummary().GetAccountPlatforms() {
+	for _, account := range s.serviceWrapper.Info.GetFeatureSummary().GetAccountPlatforms() {
 		if account.GetId() == req.GetAccountId().GetPlatform() {
-			return s.p.Handler.PullAccountAppInfoRelation(ctx, req)
+			return s.serviceWrapper.LibrarianPorterServiceServer.PullAccountAppInfoRelation(ctx, req)
 		}
 	}
 	return nil, errors.BadRequest("Unsupported account", "")
 }
 func (s *service) SearchAppInfo(ctx context.Context, req *pb.SearchAppInfoRequest) (*pb.SearchAppInfoResponse, error) {
-	if !s.p.Enabled() {
+	if !s.serviceWrapper.Enabled() {
 		return nil, errors.Forbidden("Unauthorized caller", "")
 	}
 	if req.GetName() == "" {
 		return nil, errors.BadRequest("Invalid app name", "")
 	}
-	if len(s.p.Info.GetFeatureSummary().GetAppInfoSources()) > 0 {
-		return s.p.Handler.SearchAppInfo(ctx, req)
+	if len(s.serviceWrapper.Info.GetFeatureSummary().GetAppInfoSources()) > 0 {
+		return s.serviceWrapper.LibrarianPorterServiceServer.SearchAppInfo(ctx, req)
 	}
 	return nil, errors.BadRequest("Unsupported app source", "")
 }
 func (s *service) PullFeed(ctx context.Context, req *pb.PullFeedRequest) (*pb.PullFeedResponse, error) {
-	if !s.p.Enabled() {
+	if !s.serviceWrapper.Enabled() {
 		return nil, errors.Forbidden("Unauthorized caller", "")
 	}
-	for _, source := range s.p.Info.GetFeatureSummary().GetFeedSources() {
+	for _, source := range s.serviceWrapper.Info.GetFeatureSummary().GetFeedSources() {
 		if source.GetId() == req.GetSource().GetId() {
-			return s.p.Handler.PullFeed(ctx, req)
+			return s.serviceWrapper.LibrarianPorterServiceServer.PullFeed(ctx, req)
 		}
 	}
 	return nil, errors.BadRequest("Unsupported feed source", "")
 }
 func (s *service) PushFeedItems(ctx context.Context, req *pb.PushFeedItemsRequest) (
 	*pb.PushFeedItemsResponse, error) {
-	if !s.p.Enabled() {
+	if !s.serviceWrapper.Enabled() {
 		return nil, errors.Forbidden("Unauthorized caller", "")
 	}
-	for _, destination := range s.p.Info.GetFeatureSummary().GetNotifyDestinations() {
+	for _, destination := range s.serviceWrapper.Info.GetFeatureSummary().GetNotifyDestinations() {
 		if destination.GetId() == req.GetDestination().GetId() {
-			return s.p.Handler.PushFeedItems(ctx, req)
+			return s.serviceWrapper.LibrarianPorterServiceServer.PushFeedItems(ctx, req)
 		}
 	}
 	return nil, errors.BadRequest("Unsupported notify destination", "")

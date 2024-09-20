@@ -22,6 +22,7 @@ import (
 )
 
 const (
+	serviceID           = "PORTER_SERVICE_ID"
 	serverNetwork       = "SERVER_NETWORK"
 	serverAddr          = "SERVER_ADDRESS"
 	serverTimeout       = "SERVER_TIMEOUT"
@@ -77,11 +78,11 @@ func (p *Porter) Stop() error {
 func NewPorter(
 	ctx context.Context,
 	info *porter.GetPorterInformationResponse,
-	handler Handler,
+	service porter.LibrarianPorterServiceServer,
 	options ...PorterOption,
 ) (*Porter, error) {
-	if handler == nil {
-		return nil, errors.New("handler is nil")
+	if service == nil {
+		return nil, errors.New("service is nil")
 	}
 	if info.GetBinarySummary() == nil {
 		return nil, errors.New("binary summary is nil")
@@ -112,13 +113,13 @@ func NewPorter(
 		return nil, err
 	}
 	c := serviceWrapper{
-		Handler:       handler,
-		Info:          info,
-		Logger:        p.logger,
-		Client:        client,
-		RequireToken:  p.requireAsUser,
-		Token:         nil,
-		lastHeartbeat: time.Time{},
+		LibrarianPorterServiceServer: service,
+		Info:                         info,
+		Logger:                       p.logger,
+		Client:                       client,
+		RequireToken:                 p.requireAsUser,
+		Token:                        nil,
+		lastHeartbeat:                time.Time{},
 	}
 	p.wrapper = c
 	p.server = NewServer(
@@ -128,8 +129,12 @@ func NewPorter(
 	)
 	id, _ := os.Hostname()
 	name := "porter"
+	id = fmt.Sprintf("%s-%s-%s", id, name, info.GetBinarySummary().GetName())
+	if customID, exist := os.LookupEnv(serviceID); exist {
+		id = fmt.Sprintf("%s-%s", id, customID)
+	}
 	app := kratos.New(
-		kratos.ID(id+name),
+		kratos.ID(id),
 		kratos.Name(name),
 		kratos.Version(p.wrapper.Info.GetBinarySummary().GetBuildVersion()),
 		kratos.Metadata(map[string]string{

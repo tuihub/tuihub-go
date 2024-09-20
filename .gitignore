@@ -38,3 +38,5 @@ bin/
 dist/
 .release-env
 *.db
+
+.golangci.yml
