@@ -63,8 +63,8 @@ func (s *serviceWrapper) EnablePorter(ctx context.Context, req *pb.EnablePorterR
 				needRefreshToken = true
 				return nil
 			}
-			ctx = metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+req.GetRefreshToken())
-			resp, err := s.Client.RefreshToken(ctx, new(sephirah.RefreshTokenRequest))
+			ctx2 := metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+req.GetRefreshToken())
+			resp, err := s.Client.RefreshToken(ctx2, new(sephirah.RefreshTokenRequest))
 			if err != nil {
 				return err
 			}

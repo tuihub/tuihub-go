@@ -1,21 +1,19 @@
 SHELL:=/bin/bash
-LINT_FILE_TAG=v0.2.0
+LINT_FILE_TAG=master
 LINT_FILE_URL=https://raw.githubusercontent.com/tuihub/librarian/$(LINT_FILE_TAG)/.golangci.yml
 LINT_FILE_LOCAL=.golangci.yml
 
 .PHONY: init
 # init env
 init:
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 
 .PHONY: lint
 # lint files
-lint: $(LINT_FILE_LOCAL)
+lint:
+	curl -sSL $(LINT_FILE_URL) -o $(LINT_FILE_LOCAL)
 	golangci-lint run --fix -c $(LINT_FILE_LOCAL)
 	golangci-lint run -c $(LINT_FILE_LOCAL) # re-run to make sure fixes are valid, useful in some condition
-
-$(LINT_FILE_LOCAL):
-	curl -sSL $(LINT_FILE_URL) -o $(LINT_FILE_LOCAL)
 
 # show help
 help:
