@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.14](https://github.com/tuihub/tuihub-go/compare/v0.0.13...v0.0.14) (2024-09-20)
+
+
+### Bug Fixes
+
+* shrink service wrapper ([f21d4d8](https://github.com/tuihub/tuihub-go/commit/f21d4d800f1031a56052f6d7b2ea8af2caf5869a))
+
 ## [0.0.13](https://github.com/tuihub/tuihub-go/compare/v0.0.12...v0.0.13) (2024-08-07)
 
 
