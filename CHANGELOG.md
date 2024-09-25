@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.16](https://github.com/tuihub/tuihub-go/compare/v0.0.15...v0.0.16) (2024-09-25)
+
+
+### Bug Fixes
+
+* fix needRefreshToken logic ([7efe264](https://github.com/tuihub/tuihub-go/commit/7efe2647c13f1b38002428705142c959e43a7874))
+
 ## [0.0.15](https://github.com/tuihub/tuihub-go/compare/v0.0.14...v0.0.15) (2024-09-25)
 
 
