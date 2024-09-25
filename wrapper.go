@@ -3,6 +3,7 @@ package tuihub
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	pb "github.com/tuihub/protos/pkg/librarian/porter/v1"
@@ -14,13 +15,13 @@ import (
 	"github.com/go-kratos/kratos/v2/middleware"
 	"github.com/go-kratos/kratos/v2/middleware/logging"
 	"github.com/go-kratos/kratos/v2/transport/grpc"
-	"google.golang.org/grpc/metadata"
 )
 
 const (
 	defaultHeartbeatInterval  = time.Second * 10
 	defaultHeartbeatDowngrade = time.Second * 30
 	defaultHeartbeatTimeout   = time.Second * 60
+	defaultRefreshToken       = time.Hour / 2
 )
 
 type serviceWrapper struct {
@@ -30,8 +31,10 @@ type serviceWrapper struct {
 	Client       sephirah.LibrarianSephirahServiceClient
 	RequireToken bool
 	Token        *tokenInfo
+	tokenMu      sync.Mutex
 
-	lastHeartbeat time.Time
+	lastHeartbeat    time.Time
+	lastRefreshToken time.Time
 }
 
 type tokenInfo struct {
@@ -44,12 +47,29 @@ func (s *serviceWrapper) GetPorterInformation(ctx context.Context, req *pb.GetPo
 	*pb.GetPorterInformationResponse, error) {
 	return s.Info, nil
 }
-func (s *serviceWrapper) EnablePorter(ctx context.Context, req *pb.EnablePorterRequest) (
+func (s *serviceWrapper) EnablePorter(ctx context.Context, req *pb.EnablePorterRequest) ( //nolint:gocognit //TODO
 	*pb.EnablePorterResponse, error) {
 	needRefreshToken := false
 	f := func() error {
-		if s.Token != nil {
+		s.tokenMu.Lock()
+		defer s.tokenMu.Unlock()
+		if s.Token != nil { //nolint:nestif //TODO
 			if s.Token.enabler == req.GetSephirahId() {
+				if req.GetRefreshToken() != "" {
+					resp, err := s.Client.RefreshToken(
+						WithToken(ctx, req.GetRefreshToken()),
+						new(sephirah.RefreshTokenRequest),
+					)
+					if err != nil {
+						return err
+					}
+					s.Token.AccessToken = resp.GetAccessToken()
+					s.Token.refreshToken = resp.GetRefreshToken()
+					s.lastRefreshToken = time.Now()
+				}
+				if s.RequireToken && (s.lastRefreshToken.Add(defaultRefreshToken).Before(time.Now()) || s.Token.refreshToken == "") {
+					needRefreshToken = true
+				}
 				return nil
 			} else if s.lastHeartbeat.Add(defaultHeartbeatTimeout).After(time.Now()) {
 				return fmt.Errorf("porter already enabled by %d", s.Token.enabler)
@@ -63,8 +83,10 @@ func (s *serviceWrapper) EnablePorter(ctx context.Context, req *pb.EnablePorterR
 				needRefreshToken = true
 				return nil
 			}
-			ctx2 := metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+req.GetRefreshToken())
-			resp, err := s.Client.RefreshToken(ctx2, new(sephirah.RefreshTokenRequest))
+			resp, err := s.Client.RefreshToken(
+				WithToken(ctx, req.GetRefreshToken()),
+				new(sephirah.RefreshTokenRequest),
+			)
 			if err != nil {
 				return err
 			}
@@ -73,6 +95,7 @@ func (s *serviceWrapper) EnablePorter(ctx context.Context, req *pb.EnablePorterR
 				AccessToken:  resp.GetAccessToken(),
 				refreshToken: resp.GetRefreshToken(),
 			}
+			s.lastRefreshToken = time.Now()
 		}
 		return nil
 	}
@@ -80,7 +103,11 @@ func (s *serviceWrapper) EnablePorter(ctx context.Context, req *pb.EnablePorterR
 		return nil, err
 	}
 	if resp, err := s.LibrarianPorterServiceServer.EnablePorter(ctx, req); isUnimplementedError(err) {
-		return new(pb.EnablePorterResponse), nil
+		return &pb.EnablePorterResponse{
+			StatusMessage:    "",
+			NeedRefreshToken: needRefreshToken || resp.GetNeedRefreshToken(),
+			EnablesSummary:   nil,
+		}, nil
 	} else {
 		resp.NeedRefreshToken = needRefreshToken
 		return resp, err
@@ -113,25 +140,25 @@ func NewServer(c *ServerConfig, service pb.LibrarianPorterServiceServer, logger 
 	return srv
 }
 
-type service struct {
-	serviceWrapper
+type serviceServer struct {
+	*serviceWrapper
 }
 
-func NewService(p serviceWrapper) pb.LibrarianPorterServiceServer {
-	return &service{
+func NewService(p *serviceWrapper) pb.LibrarianPorterServiceServer {
+	return &serviceServer{
 		p,
 	}
 }
 
-func (s *service) GetPorterInformation(ctx context.Context, req *pb.GetPorterInformationRequest) (
+func (s *serviceServer) GetPorterInformation(ctx context.Context, req *pb.GetPorterInformationRequest) (
 	*pb.GetPorterInformationResponse, error) {
 	return s.serviceWrapper.GetPorterInformation(ctx, req)
 }
-func (s *service) EnablePorter(ctx context.Context, req *pb.EnablePorterRequest) (
+func (s *serviceServer) EnablePorter(ctx context.Context, req *pb.EnablePorterRequest) (
 	*pb.EnablePorterResponse, error) {
 	return s.serviceWrapper.EnablePorter(ctx, req)
 }
-func (s *service) PullAccount(ctx context.Context, req *pb.PullAccountRequest) (
+func (s *serviceServer) PullAccount(ctx context.Context, req *pb.PullAccountRequest) (
 	*pb.PullAccountResponse, error) {
 	if !s.serviceWrapper.Enabled() {
 		return nil, errors.Forbidden("Unauthorized caller", "")
@@ -148,7 +175,7 @@ func (s *service) PullAccount(ctx context.Context, req *pb.PullAccountRequest) (
 	}
 	return nil, errors.BadRequest("Unsupported account platform", "")
 }
-func (s *service) PullAppInfo(ctx context.Context, req *pb.PullAppInfoRequest) (*pb.PullAppInfoResponse, error) {
+func (s *serviceServer) PullAppInfo(ctx context.Context, req *pb.PullAppInfoRequest) (*pb.PullAppInfoResponse, error) {
 	if !s.serviceWrapper.Enabled() {
 		return nil, errors.Forbidden("Unauthorized caller", "")
 	}
@@ -165,7 +192,7 @@ func (s *service) PullAppInfo(ctx context.Context, req *pb.PullAppInfoRequest) (
 	}
 	return nil, errors.BadRequest("Unsupported app source", "")
 }
-func (s *service) PullAccountAppInfoRelation(ctx context.Context, req *pb.PullAccountAppInfoRelationRequest) (
+func (s *serviceServer) PullAccountAppInfoRelation(ctx context.Context, req *pb.PullAccountAppInfoRelationRequest) (
 	*pb.PullAccountAppInfoRelationResponse, error) {
 	if !s.serviceWrapper.Enabled() {
 		return nil, errors.Forbidden("Unauthorized caller", "")
@@ -182,7 +209,7 @@ func (s *service) PullAccountAppInfoRelation(ctx context.Context, req *pb.PullAc
 	}
 	return nil, errors.BadRequest("Unsupported account", "")
 }
-func (s *service) SearchAppInfo(ctx context.Context, req *pb.SearchAppInfoRequest) (*pb.SearchAppInfoResponse, error) {
+func (s *serviceServer) SearchAppInfo(ctx context.Context, req *pb.SearchAppInfoRequest) (*pb.SearchAppInfoResponse, error) {
 	if !s.serviceWrapper.Enabled() {
 		return nil, errors.Forbidden("Unauthorized caller", "")
 	}
@@ -194,7 +221,7 @@ func (s *service) SearchAppInfo(ctx context.Context, req *pb.SearchAppInfoReques
 	}
 	return nil, errors.BadRequest("Unsupported app source", "")
 }
-func (s *service) PullFeed(ctx context.Context, req *pb.PullFeedRequest) (*pb.PullFeedResponse, error) {
+func (s *serviceServer) PullFeed(ctx context.Context, req *pb.PullFeedRequest) (*pb.PullFeedResponse, error) {
 	if !s.serviceWrapper.Enabled() {
 		return nil, errors.Forbidden("Unauthorized caller", "")
 	}
@@ -205,7 +232,7 @@ func (s *service) PullFeed(ctx context.Context, req *pb.PullFeedRequest) (*pb.Pu
 	}
 	return nil, errors.BadRequest("Unsupported feed source", "")
 }
-func (s *service) PushFeedItems(ctx context.Context, req *pb.PushFeedItemsRequest) (
+func (s *serviceServer) PushFeedItems(ctx context.Context, req *pb.PushFeedItemsRequest) (
 	*pb.PushFeedItemsResponse, error) {
 	if !s.serviceWrapper.Enabled() {
 		return nil, errors.Forbidden("Unauthorized caller", "")

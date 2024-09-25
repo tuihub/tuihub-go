@@ -34,7 +34,7 @@ const (
 type Porter struct {
 	server        *grpc.Server
 	requireAsUser bool
-	wrapper       serviceWrapper
+	wrapper       *serviceWrapper
 	logger        log.Logger
 	app           *kratos.App
 	consulConfig  *capi.Config
@@ -82,7 +82,7 @@ func NewPorter(
 	options ...PorterOption,
 ) (*Porter, error) {
 	if service == nil {
-		return nil, errors.New("service is nil")
+		return nil, errors.New("serviceServer is nil")
 	}
 	if info.GetBinarySummary() == nil {
 		return nil, errors.New("binary summary is nil")
@@ -112,14 +112,16 @@ func NewPorter(
 	if err != nil {
 		return nil, err
 	}
-	c := serviceWrapper{
+	c := &serviceWrapper{
 		LibrarianPorterServiceServer: service,
 		Info:                         info,
 		Logger:                       p.logger,
 		Client:                       client,
 		RequireToken:                 p.requireAsUser,
 		Token:                        nil,
+		tokenMu:                      sync.Mutex{},
 		lastHeartbeat:                time.Time{},
+		lastRefreshToken:             time.Time{},
 	}
 	p.wrapper = c
 	p.server = NewServer(
@@ -191,6 +193,27 @@ func WellKnownToString(e protoreflect.Enum) string {
 			Options(),
 		librarian.E_ToString,
 	))
+}
+
+func (p *Porter) ReverseCall(ctx context.Context) (*LibrarianClient, error) {
+	if !p.requireAsUser {
+		return nil, errors.New("init porter with `WithAsUser` option to use this method")
+	}
+	if p.wrapper.Token == nil {
+		return nil, errors.New("porter not enabled")
+	}
+	client, err := internal.NewSephirahClient(ctx, p.consulConfig, os.Getenv(sephirahServiceName))
+	if err != nil {
+		return nil, err
+	}
+	return &LibrarianClient{
+		LibrarianSephirahServiceClient: client,
+		accessToken:                    p.wrapper.Token.AccessToken,
+		refreshToken:                   "",
+		muToken:                        sync.RWMutex{},
+		backgroundRefresh:              false,
+		consulConfig:                   p.consulConfig,
+	}, nil
 }
 
 func (p *Porter) AsUser(ctx context.Context, userID int64) (*LibrarianClient, error) {

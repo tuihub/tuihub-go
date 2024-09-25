@@ -9,8 +9,8 @@ require (
 	github.com/go-kratos/kratos/v2 v2.8.0
 	github.com/hashicorp/consul/api v1.29.1
 	github.com/invopop/jsonschema v0.12.0
-	github.com/tuihub/protos v0.4.20
-	google.golang.org/grpc v1.65.0
+	github.com/tuihub/protos v0.4.23
+	google.golang.org/grpc v1.66.0
 	google.golang.org/protobuf v1.34.2
 )
 

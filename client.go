@@ -137,3 +137,9 @@ func (c *LibrarianClient) RunBackgroundRefresh() {
 		time.Sleep(time.Hour)
 	}
 }
+
+func (c *LibrarianClient) WithToken(ctx context.Context) context.Context {
+	c.muToken.RLock()
+	defer c.muToken.RUnlock()
+	return WithToken(ctx, c.accessToken)
+}
