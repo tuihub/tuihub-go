@@ -105,11 +105,11 @@ func (s *serviceWrapper) EnablePorter(ctx context.Context, req *pb.EnablePorterR
 	if resp, err := s.LibrarianPorterServiceServer.EnablePorter(ctx, req); isUnimplementedError(err) {
 		return &pb.EnablePorterResponse{
 			StatusMessage:    "",
-			NeedRefreshToken: needRefreshToken || resp.GetNeedRefreshToken(),
+			NeedRefreshToken: needRefreshToken,
 			EnablesSummary:   nil,
 		}, nil
 	} else {
-		resp.NeedRefreshToken = needRefreshToken
+		resp.NeedRefreshToken = needRefreshToken || resp.GetNeedRefreshToken()
 		return resp, err
 	}
 }
